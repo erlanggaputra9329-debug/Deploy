@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DeployPro - Upload & Deploy ke Vercel (Tanpa Token)</title>
+  <meta name="description" content="Upload file website dan deploy langsung ke Vercel tanpa perlu token. Cepat, mudah, dan nyata.">
+  <style>
+    /* --- CSS Lengkap (sama persis dengan desain sebelumnya, hanya hapus bagian token) --- */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #f8f9fa; color: #1a1a2e; line-height: 1.6; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+    .navbar { position: fixed; top: 0; width: 100%; z-index: 100; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); border-bottom: 1px solid #eee; padding: 12px 0; }
+    .navbar .container { display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-weight: 800; font-size: 1.4rem; background: linear-gradient(135deg, #6c5ce7, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .btn { display: inline-block; padding: 10px 24px; border-radius: 30px; font-weight: 600; font-size: 0.9rem; border: none; cursor: pointer; transition: 0.2s; text-decoration: none; }
+    .btn-primary { background: #6c5ce7; color: #fff; box-shadow: 0 4px 15px rgba(108,92,231,0.3); }
+    .btn-primary:hover { background: #5a4bd1; transform: translateY(-2px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-secondary { background: #00cec9; color: #fff; }
+    .hero { padding: 120px 0 60px; text-align: center; background: linear-gradient(135deg, #1a1a2e, #16213e); color: #fff; }
+    .hero h1 { font-size: 2.8rem; font-weight: 900; margin-bottom: 15px; }
+    .hero h1 span { background: linear-gradient(135deg, #6c5ce7, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .domain-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 14px 18px; margin: 20px auto; max-width: 400px; font-family: monospace; color: #00cec9; }
+    .upload-zone { border: 3px dashed #ccc; border-radius: 20px; padding: 40px; margin: 30px auto; max-width: 600px; background: #fff; cursor: pointer; transition: 0.2s; }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: #6c5ce7; background: #f8f7ff; }
+    .file-list { max-width: 600px; margin: 20px auto; background: #fff; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); display: none; }
+    .file-list.active { display: block; }
+    .file-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 18px; border-bottom: 1px solid #f1f1f1; }
+    .file-item:last-child { border-bottom: none; }
+    .btn-remove { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 1.2rem; }
+    .preview-section { max-width: 800px; margin: 30px auto; display: none; }
+    .preview-section.active { display: block; }
+    iframe { width: 100%; height: 400px; border: 1px solid #ddd; border-radius: 10px; }
+    .status-msg { font-size: 0.9rem; margin-top: 10px; text-align: center; }
+    .toast { position: fixed; bottom: 20px; right: 20px; background: #fff; box-shadow: 0 5px 20px rgba(0,0,0,0.15); padding: 14px 20px; border-radius: 10px; display: flex; align-items: center; gap: 8px; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <div class="logo">🚀 DeployPro</div>
+      <a href="#upload" class="btn btn-primary">Mulai Deploy</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="container">
+      <h1>Deploy Website <span>Tanpa Ribet Token</span></h1>
+      <p>Upload file HTML/CSS/JS Anda, preview, lalu deploy ke Vercel dengan sekali klik. Token sudah ditangani otomatis.</p>
+      <div class="domain-box" id="domainDisplay">nama-kamu.vercel.app</div>
+      <input type="text" id="websiteName" placeholder="Masukkan nama website..." style="padding:12px 20px; border-radius:30px; border:none; width:280px; font-size:1rem;">
+      <br><br>
+      <button class="btn btn-primary" id="deployBtn" disabled>🚀 Deploy Sekarang</button>
+      <p style="margin-top:10px; font-size:0.85rem; color:#aaa;" id="statusMini">⚠️ Upload file dulu</p>
+    </div>
+  </section>
+
+  <section id="upload" style="padding:60px 0;">
+    <div class="container" style="text-align:center;">
+      <h2>📤 Upload File Website</h2>
+      <div class="upload-zone" id="uploadZone">
+        <p><strong>Klik atau drop file di sini</strong></p>
+        <p style="font-size:0.9rem;color:#666;">HTML, CSS, JS, gambar, atau ZIP</p>
+        <input type="file" id="fileInput" multiple accept=".html,.css,.js,.zip,.png,.jpg,.jpeg,.gif,.svg,.ico,.webp,.json,.xml,.txt,.md" style="display:none;">
+      </div>
+      <div class="file-list" id="fileList">
+        <div class="file-list-header">File Terupload (<span id="fileCount">0</span>)</div>
+        <div id="fileListItems"></div>
+        <div style="padding:10px; display:flex; gap:10px; justify-content:flex-end;">
+          <button class="btn btn-secondary" id="clearBtn">Hapus Semua</button>
+          <button class="btn btn-primary" id="previewBtn" disabled>👁 Preview</button>
+        </div>
+      </div>
+      <div id="validationMsg" class="status-msg"></div>
+    </div>
+  </section>
+
+  <section class="preview-section" id="previewSection">
+    <div class="container">
+      <h2 style="text-align:center;">👁 Live Preview</h2>
+      <iframe id="previewIframe" sandbox="allow-scripts allow-same-origin"></iframe>
+    </div>
+  </section>
+
+  <div id="toastContainer" style="position:fixed; bottom:20px; right:20px; z-index:9999;"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script>
+    (function() {
+      // State
+      let uploadedFiles = [];
+      let hasIndexHtml = false;
+      const uploadZone = document.getElementById('uploadZone');
+      const fileInput = document.getElementById('fileInput');
+      const fileList = document.getElementById('fileList');
+      const fileListItems = document.getElementById('fileListItems');
+      const fileCount = document.getElementById('fileCount');
+      const deployBtn = document.getElementById('deployBtn');
+      const previewBtn = document.getElementById('previewBtn');
+      const previewSection = document.getElementById('previewSection');
+      const previewIframe = document.getElementById('previewIframe');
+      const validationMsg = document.getElementById('validationMsg');
+      const websiteNameInput = document.getElementById('websiteName');
+      const domainDisplay = document.getElementById('domainDisplay');
+      const statusMini = document.getElementById('statusMini');
+      const clearBtn = document.getElementById('clearBtn');
+
+      // Helper: toast
+      function showToast(msg, type='info') {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.style.borderLeft = type==='success'?'4px solid #00b894':type==='error'?'4px solid #e74c3c':'4px solid #3498db';
+        t.innerHTML = `<span>${type==='success'?'✅':type==='error'?'❌':'ℹ️'}</span> ${msg}`;
+        document.getElementById('toastContainer').appendChild(t);
+        setTimeout(() => { t.style.opacity='0'; t.style.transition='0.3s'; setTimeout(()=>t.remove(),300); }, 3500);
+      }
+
+      function formatSize(bytes) {
+        if (bytes<1024) return bytes+' B';
+        if (bytes<1048576) return (bytes/1024).toFixed(1)+' KB';
+        return (bytes/1048576).toFixed(2)+' MB';
+      }
+
+      function checkIndexHtml() {
+        hasIndexHtml = uploadedFiles.some(f => f.name.toLowerCase()==='index.html' || f.name.toLowerCase()==='index.htm');
+        return hasIndexHtml;
+      }
+
+      function validate() {
+        if(uploadedFiles.length===0) {
+          validationMsg.textContent = '⚠️ Belum ada file yang diupload.';
+          return false;
+        }
+        if(!checkIndexHtml()) {
+          validationMsg.textContent = '❌ File index.html tidak ditemukan!';
+          return false;
+        }
+        const totalSize = uploadedFiles.reduce((s,f)=>s+f.size,0);
+        if(totalSize > 50*1024*1024) {
+          validationMsg.textContent = '❌ Total ukuran file > 50MB.';
+          return false;
+        }
+        validationMsg.textContent = `✅ ${uploadedFiles.length} file siap (${formatSize(totalSize)}).`;
+        return true;
+      }
+
+      function renderFiles() {
+        fileListItems.innerHTML = '';
+        uploadedFiles.forEach((f,i)=>{
+          const div = document.createElement('div');
+          div.className = 'file-item';
+          div.innerHTML = `<span>${f.name} (${formatSize(f.size)})</span><button class="btn-remove" data-index="${i}">✕</button>`;
+          fileListItems.appendChild(div);
+        });
+        fileCount.textContent = uploadedFiles.length;
+        fileList.classList.toggle('active', uploadedFiles.length>0);
+        const valid = validate();
+        deployBtn.disabled = !valid;
+        previewBtn.disabled = !hasIndexHtml;
+        statusMini.textContent = !valid ? '⚠️ Upload file dan pastikan ada index.html' : '✅ Siap deploy';
+        domainDisplay.textContent = sanitizeName(websiteNameInput.value) ? sanitizeName(websiteNameInput.value)+'.vercel.app' : 'nama-kamu.vercel.app';
+      }
+
+      function sanitizeName(n){ return n.toLowerCase().trim().replace(/[^a-z0-9\-]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,''); }
+
+      websiteNameInput.addEventListener('input', ()=>{
+        const s = sanitizeName(websiteNameInput.value);
+        domainDisplay.textContent = s ? s+'.vercel.app' : 'nama-kamu.vercel.app';
+      });
+
+      // Upload handlers
+      uploadZone.addEventListener('click',()=>fileInput.click());
+      uploadZone.addEventListener('dragover',e=>{e.preventDefault(); uploadZone.classList.add('drag-over');});
+      uploadZone.addEventListener('dragleave',()=>uploadZone.classList.remove('drag-over'));
+      uploadZone.addEventListener('drop', async e=>{
+        e.preventDefault(); uploadZone.classList.remove('drag-over');
+        const items = Array.from(e.dataTransfer.files);
+        await processFiles(items);
+      });
+      fileInput.addEventListener('change', async ()=>{
+        await processFiles(Array.from(fileInput.files));
+        fileInput.value='';
+      });
+
+      async function processFiles(files) {
+        for(const file of files) {
+          if(file.name.toLowerCase().endsWith('.zip')) {
+            try {
+              const zip = await JSZip.loadAsync(file);
+              const extracted = [];
+              for(const [path, entry] of Object.entries(zip.files)) {
+                if(entry.dir) continue;
+                const fname = path.split('/').pop();
+                if(!fname || fname.startsWith('.')) continue;
+                const blob = await entry.async('blob');
+                extracted.push(new File([blob], fname, {type: blob.type}));
+              }
+              extracted.forEach(f => addFile(f));
+            } catch(e) { showToast('Gagal ekstrak ZIP: '+e.message, 'error'); }
+          } else {
+            addFile(file);
+          }
+        }
+        renderFiles();
+      }
+
+      function addFile(file) {
+        if(!uploadedFiles.some(f=>f.name===file.name && f.size===file.size)) {
+          uploadedFiles.push({name:file.name, size:file.size, type:file.type, data:file});
+        }
+      }
+
+      fileListItems.addEventListener('click', e=>{
+        if(e.target.classList.contains('btn-remove')) {
+          const idx = parseInt(e.target.dataset.index);
+          uploadedFiles.splice(idx,1);
+          renderFiles();
+        }
+      });
+
+      clearBtn.addEventListener('click',()=>{
+        uploadedFiles=[];
+        renderFiles();
+        previewSection.classList.remove('active');
+      });
+
+      // Preview
+      previewBtn.addEventListener('click',()=>{
+        if(!hasIndexHtml) return;
+        const indexFile = uploadedFiles.find(f=>f.name.toLowerCase()==='index.html'||f.name.toLowerCase()==='index.htm');
+        const blobUrl = URL.createObjectURL(indexFile.data);
+        previewIframe.src = blobUrl;
+        previewSection.classList.add('active');
+        previewSection.scrollIntoView({behavior:'smooth'});
+      });
+
+      // Deploy via proxy
+      deployBtn.addEventListener('click', async ()=>{
+        if(!hasIndexHtml || uploadedFiles.length===0) return;
+        const projectName = sanitizeName(websiteNameInput.value) || 'my-site-'+Date.now();
+        deployBtn.disabled = true;
+        deployBtn.textContent = '⏳ Deploying...';
+
+        // Prepare files array for serverless function
+        const fileArray = [];
+        for(const f of uploadedFiles) {
+          const base64 = await blobToBase64(f.data);
+          fileArray.push({ name: f.name, data: base64.split(',')[1] }); // hapus prefix
+        }
+
+        try {
+          const res = await fetch('/api/deploy', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ files: fileArray, projectName })
+          });
+          const data = await res.json();
+          if(!res.ok) throw new Error(data.error || 'Deploy gagal');
+          showToast('🎉 Website live di '+data.url, 'success');
+          domainDisplay.textContent = data.url;
+          deployBtn.textContent = '🚀 Deploy Lagi';
+        } catch(err) {
+          showToast('❌ '+err.message, 'error');
+          deployBtn.textContent = '🚀 Deploy Sekarang';
+        } finally {
+          deployBtn.disabled = false;
+        }
+      });
+
+      function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      // Initial
+      renderFiles();
+    })();
+  </script>
+</body>
+</html>
